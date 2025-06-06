@@ -54,6 +54,14 @@ AGENT_CONFIG = {
         "backstory": "在产业研究领域工作15年，对各行业生态有深入理解",  # Agent背景 - Agent backstory
         "verbose": True,  # 是否输出详细信息 - Whether to output verbose information
     },
+
+    # 股票池构建专家Agent配置 - Stock Pool Builder Agent Configuration
+    "stock_pool_builder": {
+        "role": "A股投资标的筛选专家", # Agent角色
+        "goal": "基于产业链分析构建结构化的、分层的股票池", # Agent目标
+        "backstory": "在多家头部券商研究所担任高级策略分析师超过10年，专注于A股市场行业研究和个股挖掘。", # Agent背景
+        "verbose": True # 是否输出详细信息
+    },
     
     # 因果推理专家Agent配置 - Causal Reasoning Expert Agent Configuration
     "causal_expert": {

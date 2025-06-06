@@ -142,11 +142,18 @@ class CrewManager(LoggerMixin): # 定义CrewManager类，继承LoggerMixin以使
         # 消息分析Agent - Message Analyst Agent
         msg_analyst_config = AGENT_CONFIG.get("message_analyst", {}) # 从配置中获取消息分析Agent的配置
         agents["message_analyst"] = Agent( # 创建消息分析Agent实例
-            role=msg_analyst_config.get("role", "资深财经新闻分析师"), # Agent角色
-            goal=( # Agent目标，进行详细描述
-                "精准、全面地解析财经消息，提取关键事件信息、影响范围、情感倾向，"
-                "并利用搜索工具补充事件背景和相关信息，确保分析的深度和广度。"
-            ),
+            role="""
+你是一位资深的财经新闻传导分析专家，拥有15年A股市场研究经验。
+你的专长是从复杂的财经新闻中精准识别出对A股行业板块的具体影响路径。
+你深度了解申万行业分类体系，能够准确判断新闻事件对不同行业板块的传导机制。
+""", # Agent角色
+            goal="""
+从给定的财经新闻中，精准分析出：
+1. 核心事件的影响因子和传导机制
+2. 受影响的A股行业板块（精确到申万二级分类）
+3. 影响的传导路径、强度、方向和时间窗口
+4. 为后续的产业链分析提供精准的行业标的
+""", # Agent目标
             backstory=( # Agent背景故事，进行详细描述
                 "拥有超过10年的财经新闻分析经验，对市场动态有敏锐洞察力。"
                 "擅长从海量信息中快速识别核心事件，并结合多方信息源进行综合研判，"
@@ -162,11 +169,18 @@ class CrewManager(LoggerMixin): # 定义CrewManager类，继承LoggerMixin以使
         # 产业链专家Agent - Industry Chain Expert Agent
         industry_expert_config = AGENT_CONFIG.get("industry_expert", {}) # 从配置中获取产业链专家Agent的配置
         agents["industry_expert"] = Agent( # 创建产业链专家Agent实例
-            role=industry_expert_config.get("role", "产业链高级研究员"), # Agent角色
-            goal=( # Agent目标，进行详细描述
-                "基于事件信息和深入的行业研究，构建完整、准确、动态更新的产业链知识图谱。"
-                "识别核心影响环节、关键技术节点和代表性企业，并清晰梳理产业链上下游的传导关系。"
-            ),
+            role="""
+你是一位产业链深度研究专家，在中国A股市场产业链分析领域有20年经验。
+你精通各行业的完整产业链结构，深度了解上中下游的供应关系、技术依赖和价值传导。
+你擅长将宏观的行业影响精准分解到具体的产业链环节和代表性企业。
+""", # Agent角色
+            goal="""
+基于前序的行业影响分析，在确定的重点行业内构建详细的产业链图谱：
+1. 绘制完整的上中下游产业链结构
+2. 识别每个环节的关键企业和A股标的
+3. 分析事件对各产业链环节的差异化影响
+4. 构建清晰的"事件→行业→产业链环节→具体企业"传导路径
+""", # Agent目标
             backstory=( # Agent背景故事，进行详细描述
                 "在产业经济研究领域拥有15年经验，主导过多个国家级产业规划项目。"
                 "对中国各主要行业的生态系统有深刻理解，能够快速构建和验证产业链模型，"
@@ -206,16 +220,53 @@ class CrewManager(LoggerMixin): # 定义CrewManager类，继承LoggerMixin以使
             allow_delegation=False, # 是否允许任务委派
             max_iter=7 # 设置最大迭代次数
         )
+
+        # 股票池构建专家Agent - Stock Pool Builder Agent
+        stock_pool_builder_config = AGENT_CONFIG.get("stock_pool_builder", {}) # 新增Agent配置获取
+        agents["stock_pool_builder"] = Agent(
+            role="""
+你是一位专业的A股投资标的筛选专家，精通基于产业链分析构建投资标的池。
+你擅长将复杂的产业链分析转化为结构化的、可投资的股票池，并进行科学的分层分级。
+你深度了解A股市场特点，能够准确评估不同股票与投资主题的相关性。
+""",
+            goal="""
+基于前序的产业链分析，构建结构化的股票池：
+1. 收集产业链覆盖的所有相关A股标的
+2. 按相关性和投资价值进行科学分层
+3. 为每只股票提供详细的投资逻辑分析
+4. 构建"高-中-低"相关性的分层股票池
+""",
+            backstory="""
+在多家头部券商研究所担任高级策略分析师超过10年，专注于A股市场行业研究和个股挖掘。
+主导构建了多个行业主题股票池，以逻辑严谨、覆盖全面、实用性强著称。
+对产业链上下游联动和价值传导有深刻理解，能够精准识别投资机会。
+""",
+            tools=[
+                self.stock_data_tool,
+                self.stock_screening_tool,
+                self.industry_stock_tool # 可能需要此工具来获取行业下的所有股票
+            ],
+            llm=shared_llm,
+            verbose=stock_pool_builder_config.get("verbose", True),
+            allow_delegation=False,
+            max_iter=8
+        )
         
         # 投资顾问Agent - Investment Advisor Agent
         investment_advisor_config = AGENT_CONFIG.get("investment_advisor", {}) # 从配置中获取投资顾问Agent的配置
         agents["investment_advisor"] = Agent( # 创建投资顾问Agent实例
-            role=investment_advisor_config.get("role", "资深量化投资策略师"), # Agent角色
-            goal=( # Agent目标，进行详细描述
-                "基于深度因果分析和产业链研究成果，运用量化模型筛选构建高相关性的股票池。"
-                "对候选股票进行精细化的相关性评估（强、中、弱），并结合基本面和技术面分析，"
-                "最终提供具体、可操作、风险可控的投资组合建议，并附带详尽的投资逻辑和风险收益分析。"
-            ),
+            role="""
+你是一位基于传导分析的投资决策专家，拥有超过20年的A股市场实战投资经验和丰富的量化策略开发背景。
+你擅长将复杂的市场分析和事件驱动因素转化为可执行的投资策略，注重风险管理和组合优化。
+你的核心能力是从结构化的股票池中，结合完整的"新闻→行业→产业链→股票"逻辑链，筛选出最优投资标的。
+""", # Agent角色
+            goal="""
+基于前序构建的分层股票池和完整的传导分析逻辑，进行最终的投资决策：
+1. 从高、中相关性股票池中筛选出最具投资价值的核心标的。
+2. 为每个推荐标的提供清晰、可追溯的完整投资逻辑链。
+3. 详细阐述每个标的的潜在催化剂和主要风险点。
+4. 构建一个风险可控、具有吸引力的最终投资组合建议。
+""", # Agent目标
             backstory=( # Agent背景故事，进行详细描述
                 "拥有超过20年的A股市场实战投资经验和丰富的量化策略开发背景。"
                 "擅长将复杂的市场分析和事件驱动因素转化为可执行的投资策略，注重风险管理和组合优化，"
@@ -337,50 +388,274 @@ class CrewManager(LoggerMixin): # 定义CrewManager类，继承LoggerMixin以使
         
         # 任务1：深度消息解析与事件定义
         tasks["message_analysis"] = Task( # 创建消息分析任务
-            description=( # 任务描述，详细说明任务目标和步骤
-                f"深入分析以下财经消息：'{message_text}'。\n"
-                "步骤：\n"
-                "1. **核心事件提取**：使用【消息分析工具】精准提取消息中的关键事件信息，包括：事件类型（如政策发布、技术突破、市场异动等）、核心主体（涉及的公司、机构、产品等）、主要影响领域、以及消息中体现的初步情感倾向（正面/负面/中性）。\n"
-                "2. **背景信息挖掘**：利用【互联网搜索工具】，针对提取出的核心事件和主体，进行深入的背景信息检索。重点查找与事件相关的历史渊源、深度解读文章、权威机构评论以及当前市场的普遍反应。\n"
-                "3. **信息整合与事件定义**：综合以上两步获取的所有信息，形成对该财经事件全面、准确、多维度的定义和理解。确保输出结果清晰、结构化，便于后续任务使用。"
-            ),
+            description=f"""
+请深入分析以下财经消息：'{message_text}'
+
+**第一步：核心事件解构**
+请提取：
+- 事件核心：用一句话概括核心事件
+- 事件类型：政策变化/技术突破/市场供需/突发事件/监管变化/其他
+- 关键影响因子：列出3-5个最关键的影响因子（如"补贴减少"、"技术突破"、"需求增长"等）
+- 影响性质：正面/负面/中性/混合
+
+**第二步：A股行业板块影响分析**
+基于事件分析，请确定受影响的A股行业板块：
+
+**主要影响行业（直接受益/受损）：**
+- 使用申万二级行业分类（如801080汽车整车、801230电池等）
+- 每个行业必须包含：
+  * 申万代码和行业名称
+  * 影响评分（0-1分，保留2位小数）
+  * 影响方向（positive/negative/mixed）
+  * 具体传导机制（详细说明"为什么"这个行业会受到影响）
+  * 影响预期强度（高/中/低）
+
+**次要影响行业（间接受益/受损）：**
+- 同样格式，但影响评分通常较低
+- 重点说明间接传导的逻辑
+
+**第三步：传导时间分析**
+请分析影响的时间窗口：
+- 即时影响（1-7天）：市场情绪和预期变化
+- 短期影响（1-3个月）：政策落地、订单变化、业绩预期调整
+- 中期影响（3-12个月）：实际业绩体现、行业格局变化
+- 长期影响（1年以上）：产业结构性变化
+
+**第四步：风险因素识别**
+识别可能影响传导效果的风险因素：
+- 政策执行风险
+- 市场反应超预期/不及预期风险
+- 竞争格局变化风险
+- 宏观环境变化风险
+""", # 任务描述
             agent=self.agents["message_analyst"], # 指定执行此任务的Agent
-            expected_output=( # 预期的输出格式和内容
-                "一个结构化的JSON字符串，必须包含以下字段：\n"
-                "  - `event_details`: (object) 包含从消息中直接提取的详细事件信息。\n"
-                "    - `type`: (string) 事件类型（如：'政策调整', '技术突破', '市场传闻'），如果无法确定，请明确指出“未知”。\n"
-                "    - `main_subjects`: (list of strings) 事件涉及的主要公司、机构或产品名称。\n"
-                "    - `scope_of_impact`: (string) 初步判断的事件主要影响范围或领域。\n"
-                "    - `initial_sentiment`: (string) 基于消息文本的初步情感判断（'正面', '负面', '中性'）。\n"
-                "  - `background_research`: (object) 通过互联网搜索补充的背景信息。\n"
-                "    - `key_findings`: (list of strings) 最重要的几条背景信息或深度解读摘要。\n"
-                "    - `market_reactions_summary`: (string) 对当前市场主要评论和反应的总结。\n"
-                "  - `refined_event_definition`: (string) 综合所有信息后，对事件的最终精准定义描述。\n"
-                "  - `preliminary_affected_industries`: (list of strings) 根据分析，列出1-3个最可能受此事件直接影响的行业名称。如果无法准确判断，请返回一个空列表 `[]` 或包含如“不明确”等说明性条目的列表，但此字段必须存在。"
-            )
+            expected_output="""
+一个完整的JSON字符串，包含事件分析、行业影响映射、时间分析、风险因素和分析摘要。
+重点确保行业影响映射部分的精准性和传导机制的清晰性。
+严格按照以下JSON格式输出：
+{{
+  "event_analysis": {{
+    "core_event": "事件核心一句话描述",
+    "event_type": "事件类型",
+    "key_factors": ["因子1", "因子2", "因子3"],
+    "impact_nature": "正面/负面/中性/混合"
+  }},
+  "industry_impact_mapping": {{
+    "primary_industries": [
+      {{
+        "sw_code": "801XXX",
+        "industry_name": "行业名称",
+        "impact_score": 0.XX,
+        "impact_direction": "positive/negative/mixed",
+        "transmission_mechanism": "详细的传导机制说明，至少50字",
+        "impact_intensity": "高/中/低",
+        "confidence_level": "高/中/低"
+      }}
+    ],
+    "secondary_industries": [
+      {{
+        "sw_code": "801XXX", 
+        "industry_name": "行业名称",
+        "impact_score": 0.XX,
+        "impact_direction": "positive/negative/mixed",
+        "transmission_mechanism": "间接传导机制说明",
+        "impact_intensity": "高/中/低",
+        "confidence_level": "高/中/低"
+      }}
+    ]
+  }},
+  "temporal_analysis": {{
+    "immediate_impact": "即时影响描述",
+    "short_term_impact": "短期影响描述", 
+    "medium_term_impact": "中期影响描述",
+    "long_term_impact": "长期影响描述",
+    "peak_impact_timing": "预计影响峰值时间"
+  }},
+  "risk_factors": [
+    {{
+      "risk_type": "风险类型",
+      "risk_description": "风险描述",
+      "impact_on_analysis": "对分析结果的影响"
+    }}
+  ],
+  "analysis_summary": {{
+    "total_affected_industries": "受影响行业总数",
+    "highest_impact_industry": "影响最大的行业",
+    "key_transmission_logic": "核心传导逻辑一句话总结"
+  }},
+  "visualization_data": {{
+    "flowchart_data_for_news_to_industry": {{
+        "steps": [
+            {{"id": "news_event", "label": "新闻事件核心", "type": "io"}},
+            {{"id": "factor1", "label": "影响因子1", "type": "process"}},
+            {{"id": "industry1", "label": "主要影响行业1", "type": "output"}}
+        ],
+        "connections": [
+            {{"from": "news_event", "to": "factor1"}},
+            {{"from": "factor1", "to": "industry1"}}
+        ]
+    }}
+  }}
+}}
+"""
         )
         
         # 任务2：产业链深度分析与构建
         tasks["industry_chain_building"] = Task( # 创建产业链构建任务
-            description=( # 任务描述
-                "基于【消息分析任务】输出的`preliminary_affected_industries`初步判断的受影响行业列表：\n"
-                "步骤：\n"
-                "1. **核心行业确认与产业链研究**：从初步影响行业列表中，筛选并确认1-2个核心受影响最直接的行业。针对这些核心行业，使用【行业研究工具】（例如，`search_type`可以设为`'overview'`或`'chain'`）进行深度搜索，全面了解其当前的产业链结构，包括明确的上游（原材料/零部件供应）、中游（核心制造/加工/服务）和下游（应用/分销/消费）环节。\n"
-                "2. **产业链股票池构建**：使用【行业股票工具】获取核心行业及其已识别的上下游相关行业的完整股票列表。调用此工具时，请注意参数：`industry`应为行业名称或代码；`classification`参数应设为`'sw'` (代表申万行业分类) 或 `'zjh'` (代表证监会行业分类)；`detail_level`参数应设为字符串`'1'`、`'2'`或`'3'`，分别代表一、二、三级行业。例如，要获取申万一级行业的股票，可以设置 `classification='sw'` 和 `detail_level='1'`。\n"
-                "3. **股票基础信息收集**：针对股票池中的每只股票，使用【股票数据工具】（例如，`data_type`可以设为`'real_time'`获取实时行情或`'fundamental'`获取基本面信息）获取其关键基础信息，至少包括：股票代码、股票简称、总市值、流通市值、主营业务构成等。\n"
-                "4. **产业链知识图谱构建**：整合以上信息，构建一个详细的、结构化的产业链知识图谱。图谱应清晰展示核心行业、上下游环节、各环节的代表性企业（股票）及其主要的业务联系或供应关系。"
-            ),
+            description="""
+基于上一步的行业影响分析结果，请对影响评分最高的前2个行业进行深度产业链分析。
+
+**分析目标行业：** [从上一步结果中自动提取评分最高的行业]
+
+**第一步：产业链结构映射**
+为目标行业构建完整的产业链图谱：
+
+**上游环节分析：**
+- 列出3-5个主要上游环节
+- 每个环节包含：
+  * 环节名称（如"锂电池正极材料"、"汽车芯片"等）
+  * 环节描述（该环节的主要功能和价值）
+  * 技术壁垒（高/中/低）
+  * 市场集中度（高/中/低）
+  * 主要参与者类型（原材料供应商、设备商、技术提供商等）
+
+**中游环节分析：**
+- 列出2-4个主要中游环节
+- 同样的分析维度
+- 特别关注制造、组装、集成等核心环节
+
+**下游环节分析：**
+- 列出2-4个主要下游环节  
+- 关注应用、销售、服务等环节
+
+**第二步：关键企业映射**
+为每个产业链环节找出对应的A股上市公司：
+
+**企业筛选标准：**
+- 必须是A股上市公司
+- 在该环节有重要地位（龙头、重要参与者、新兴力量）
+- 业务与该环节高度相关（主营业务占比>30%或战略布局明确）
+
+**企业信息要求：**
+- 股票代码和名称
+- 在产业链中的精确定位
+- 市场地位（龙头/重要参与者/新兴企业）
+- 核心业务描述
+- 竞争优势简述
+
+**第三步：事件影响传导分析**
+分析原始事件对各产业链环节的具体影响：
+
+**传导路径构建：**
+- 绘制"事件→一级传导→二级传导→三级传导"的完整路径
+- 每个传导步骤要有清晰的逻辑和机制说明
+- 标注传导强度和时间延迟
+
+**差异化影响分析：**
+- 分析为什么不同环节受到的影响不同
+- 识别受益最大和受损最大的环节
+- 预测影响的持续时间和强度变化
+
+**第四步：关键节点识别**
+识别产业链中的关键控制点：
+- 技术瓶颈点
+- 供应瓶颈点  
+- 需求放大点
+- 政策敏感点
+""", # 任务描述
             agent=self.agents["industry_expert"], # 指定执行此任务的Agent
             context=[tasks["message_analysis"]], # 此任务依赖上一个任务的输出
-            expected_output=( # 预期的输出格式和内容
-                "一个结构化的JSON字符串，必须包含以下字段：\n"
-                "  - `target_core_industry`: (string) 最终确认的核心受影响行业名称。\n"
-                "  - `industry_chain_map`: (object) 详细的产业链图谱描述。\n"
-                "    - `upstream`: (object) 上游环节描述，包含环节名称和代表性企业列表（含股票代码、简称）。\n"
-                "    - `midstream`: (object) 中游环节描述，包含环节名称和代表性企业列表。\n"
-                "    - `downstream`: (object) 下游环节描述，包含环节名称和代表性企业列表。\n"
-                "  - `full_industry_stock_pool`: (list of objects) 完整的产业链相关股票池，每个对象包含股票代码、简称、所属产业链环节、主营业务简介。"
-            )
+            expected_output="""
+详细的产业链分析JSON，重点突出各环节的关键企业和事件影响的传导路径。
+确保每个产业链环节都有明确的企业映射和影响分析。
+严格按照以下JSON格式输出：
+{{
+  "target_industry_analysis": {{
+    "industry_name": "目标行业名称",
+    "industry_overview": "行业概况和特点描述"
+  }},
+  "detailed_industry_chain": {{
+    "upstream_segments": [
+      {{
+        "segment_name": "环节名称",
+        "segment_description": "环节功能描述",
+        "technical_barrier": "高/中/低",
+        "market_concentration": "高/中/低",
+        "key_companies": [
+          {{
+            "stock_code": "000XXX",
+            "company_name": "公司名称",
+            "chain_position": "在产业链中的精确位置",
+            "market_status": "龙头/重要参与者/新兴企业",
+            "core_business": "核心业务描述",
+            "competitive_advantage": "竞争优势"
+          }}
+        ],
+        "event_impact_analysis": {{
+          "impact_direction": "positive/negative/neutral",
+          "impact_mechanism": "具体影响机制说明",
+          "impact_intensity": "高/中/低",
+          "impact_timing": "即时/短期/中期/长期"
+        }}
+      }}
+    ],
+    "midstream_segments": [/*同样格式*/],
+    "downstream_segments": [/*同样格式*/]
+  }},
+  "transmission_path_analysis": {{
+    "primary_transmission_paths": [
+      {{
+        "path_description": "传导路径描述",
+        "path_steps": [
+          {{
+            "step_number": 1,
+            "from_element": "起始点",
+            "to_element": "传导到的点",
+            "transmission_mechanism": "传导机制",
+            "transmission_strength": "强/中/弱",
+            "time_delay": "传导延迟时间"
+          }}
+        ],
+        "overall_confidence": "路径整体置信度0-1"
+      }}
+    ]
+  }},
+  "key_control_points": [
+    {{
+      "control_point_name": "控制点名称",
+      "control_point_type": "技术/供应/需求/政策",
+      "importance_reason": "重要性原因",
+      "related_companies": ["相关公司列表"]
+    }}
+  ],
+  "chain_summary": {{
+    "total_companies_identified": "识别的公司总数",
+    "most_impacted_segment": "受影响最大的环节",
+    "key_investment_themes": ["投资主题1", "投资主题2"],
+    "chain_health_assessment": "产业链健康度评估"
+  }},
+  "visualization_data": {{
+    "industry_chain_network_data": {{
+        "nodes": [
+            {{"id": "upstream_segment_1_id", "label": "上游环节1", "type": "upstream"}},
+            {{"id": "company_A_id", "label": "公司A", "type": "company", "properties": {{"parent_segment": "upstream_segment_1_id"}} }}
+        ],
+        "edges": [
+            {{"source": "upstream_segment_1_id", "target": "midstream_segment_1_id", "label": "供应"}}
+        ]
+    }},
+    "transmission_to_segments_flowchart_data": {{
+        "steps": [
+             {{"id": "event", "label": "事件核心", "type": "io"}},
+             {{"id": "upstream_impact", "label": "对上游环节X的影响", "type": "process"}}
+        ],
+        "connections": [
+            {{"from": "event", "to": "upstream_impact"}}
+        ]
+    }}
+  }}
+}}
+"""
         )
         
         # 任务3：精细化因果推理与影响评估
@@ -400,51 +675,264 @@ class CrewManager(LoggerMixin): # 定义CrewManager类，继承LoggerMixin以使
                 "  - `causal_graph_analysis`: (object) 详细的因果图分析数据。\n"
                 "    - `nodes`: (list of objects) 图中的节点信息（事件、产业链环节、企业等）。\n"
                 "    - `edges`: (list of objects) 图中的边信息（传导关系、影响方向、强度初步判断）。\n"
-                "  - `visualization_image_base64`: (string) 因果图的Base64编码PNG图像字符串。\n"
+                "  - `visualization_image_base64`: (string) 因果图的Base64编码PNG图像字符串。(此字段由工具直接生成，无需Agent构造)\n"
                 "  - `key_transmission_paths_analysis`: (list of strings) 对几条最关键的事件影响传导路径的文字描述和分析。\n"
                 "  - `quantitative_impact_assessment`: (list of objects) 对产业链关键环节或代表性企业的初步量化/定性影响评估，每个对象包含评估目标、影响方向、预估强度（强/中/弱）和简要理由。\n"
-                "  - `macro_context_impact_summary`: (string) 简要总结当前宏观经济环境对此次事件影响传导的可能作用。"
+                "  - `macro_context_impact_summary`: (string) 简要总结当前宏观经济环境对此次事件影响传导的可能作用。\n"
+                "  - `visualization_data_for_causal_graph`: {{ /* 用于生成因果图的GraphData结构 */ }}\n"
             )
         )
+
+        # 任务4 (原任务3)：股票池构建任务
+        tasks["stock_pool_building"] = Task(
+            description="""
+基于前面的产业链分析结果，请构建完整的投资标的股票池。
+
+**第一步：股票收集整理**
+从产业链分析中提取所有相关股票，并补充遗漏标的：
+
+**数据整理要求：**
+- 确认所有股票代码的准确性
+- 补充遗漏的重要标的（如果产业链分析中有遗漏）
+- 验证公司的主营业务与产业链位置的匹配度
+- 剔除停牌、ST、*ST等不可投资标的
+
+**第二步：相关性评估体系**
+为每只股票建立多维度相关性评估：
+
+**评估维度：**
+1. **业务相关性（40%权重）：**
+   - 主营业务占比：该业务在公司总营收中的比例
+   - 业务核心度：该业务是否为公司核心战略
+   - 评分标准：0.8-1.0（核心业务），0.6-0.8（重要业务），0.4-0.6（一般业务），<0.4（边缘业务）
+
+2. **传导敏感性（30%权重）：**
+   - 基于产业链位置评估对事件的敏感程度
+   - 上游供应商：中等敏感性
+   - 中游制造商：高敏感性  
+   - 下游应用商：中等敏感性
+   - 评分标准：0.8-1.0（高敏感），0.6-0.8（中敏感），0.4-0.6（低敏感）
+
+3. **市场地位（20%权重）：**
+   - 行业龙头：1.0分
+   - 重要参与者：0.8分
+   - 新兴企业：0.6分
+   - 其他参与者：0.4分
+
+4. **财务质量（10%权重）：**
+   - 基于盈利能力、成长性、财务健康度
+   - 优秀：0.9-1.0，良好：0.7-0.9，一般：0.5-0.7，较差：<0.5
+
+**第三步：股票池分层构建**
+
+**高相关性池（综合评分≥0.75）：**
+- 核心投资标的
+- 与投资主题高度相关
+- 重点推荐和深度分析
+
+**中相关性池（综合评分0.60-0.75）：**
+- 重要关注标的
+- 有一定投资价值
+- 作为组合配置考虑
+
+**低相关性池（综合评分0.45-0.60）：**
+- 边缘相关标的
+- 弹性配置选择
+- 主题拓展考虑
+
+**第四步：投资逻辑构建**
+为每只股票构建详细的投资逻辑：
+
+**逻辑要素：**
+- 事件传导路径：事件如何传导到该股票
+- 业务影响机制：对公司具体业务的影响
+- 财务影响预期：对营收、利润的潜在影响
+- 催化剂分析：未来可能的积极因素
+- 风险因素：需要关注的风险点
+""",
+            agent=self.agents["stock_pool_builder"],
+            context=[tasks["industry_chain_building"]], # 依赖产业链分析结果
+            expected_output="""
+完整的分层股票池JSON，包含详细的相关性评估和投资逻辑分析。
+重点突出高相关性池中股票的深度投资逻辑。
+严格按照以下JSON格式输出：
+{{
+  "stock_pool_construction": {{
+    "construction_summary": {{
+      "total_stocks": "股票总数",
+      "high_relevance_count": "高相关股票数量", 
+      "medium_relevance_count": "中相关股票数量",
+      "low_relevance_count": "低相关股票数量",
+      "construction_date": "构建日期"
+    }},
+    "high_relevance_pool": [
+      {{
+        "stock_code": "000XXX",
+        "stock_name": "股票名称",
+        "industry_chain_position": "在产业链中的位置",
+        "relevance_score": 0.XX,
+        "score_breakdown": {{
+          "business_relevance": 0.XX,
+          "transmission_sensitivity": 0.XX, 
+          "market_position": 0.XX,
+          "financial_quality": 0.XX
+        }},
+        "investment_logic": {{
+          "transmission_path": "事件传导到该股的具体路径",
+          "business_impact": "对公司业务的具体影响",
+          "financial_impact_expectation": "对财务指标的影响预期",
+          "key_catalysts": ["催化剂1", "催化剂2"],
+          "main_risks": ["风险点1", "风险点2"]
+        }},
+        "recommendation_level": "强烈推荐/推荐/关注"
+      }}
+    ],
+    "medium_relevance_pool": [/*同样格式，但投资逻辑可以简化*/],
+    "low_relevance_pool": [/*同样格式，投资逻辑进一步简化*/]
+  }},
+  "pool_analysis": {{
+    "sector_distribution": {{
+      "upstream_stocks": "上游股票数量",
+      "midstream_stocks": "中游股票数量", 
+      "downstream_stocks": "下游股票数量"
+    }},
+    "market_cap_distribution": {{
+      "large_cap": "大盘股数量",
+      "mid_cap": "中盘股数量",
+      "small_cap": "小盘股数量"
+    }},
+    "risk_level_distribution": {{
+      "low_risk": "低风险股票数量",
+      "medium_risk": "中风险股票数量",
+      "high_risk": "高风险股票数量"
+    }}
+  }},
+  "investment_themes": [
+    {{
+      "theme_name": "投资主题名称",
+      "theme_description": "主题描述",
+      "related_stocks": ["相关股票代码"],
+      "theme_strength": "主题强度评估"
+    }}
+  ],
+  "visualization_data": {{
+      "stock_pool_treemap_data": {{
+          "id": "root_pool", "name": "总股票池", "children": [
+              {{"id": "high_rel_node", "name": "高相关", "children": [ {{"id": "stock1_id", "name": "股票1", "value": 1}} ] }}
+          ]
+      }}
+  }}
+}}
+"""
+        )
         
-        # 任务4：智能化投资组合构建与建议
+        # 任务5 (原任务4)：智能化投资组合构建与建议
         tasks["investment_advice"] = Task( # 创建投资建议任务
-            description=( # 任务描述
-                "基于【因果推理任务】输出的深度分析结果和【产业链构建任务】的股票池：\n"
-                "步骤：\n"
-                "1. **初步股票筛选**：使用【股票筛选工具】，结合因果分析中的`quantitative_impact_assessment`（量化影响评估），从`full_industry_stock_pool`（产业链股票池）中，筛选出受事件积极影响（或在特定策略下，受负面影响可做空）的初步候选股票列表。\n"
-                "2. **相关性深度评估**：使用【相关性分析工具】，对初步候选股票列表中的每只股票，进行与核心事件的强、中、弱相关性分类。分析应综合考虑业务直接关联度、产业链位置、事件关键词匹配度等因素。\n"
-                "3. **核心股票深度画像**：对于被评估为“强相关”和“中相关”的股票，使用【股票数据工具】获取其最新的、详细的基本面数据（如财务指标、估值、成长性）和近期行情数据。\n"
-                "4. **投资组合构建与建议**：综合股票的基本面、技术面趋势（如有数据）、事件驱动的因果影响强度、以及与事件的相关性等级，最终形成结构化的投资建议。建议应包括：\n"
-                "    - 明确的“强相关”股票池，并针对其中1-3只核心标的给出具体的操作建议（如：买入、增持、重点关注）及详细的投资逻辑。\n"
-                "    - “中相关”股票池，并说明其值得关注的理由。\n"
-                "    - “弱相关”股票池，作为参考简要列出。\n"
-                "5. **风险揭示**：对提出的投资建议，必须进行全面的潜在风险分析和提示。"
-            ),
+            description="""
+基于【股票池构建任务】输出的分层股票池和【因果推理任务】的深度分析结果：
+
+**第一步：核心标的筛选**
+从"高相关性池"和"中相关性池"中，结合因果推理的结论（如影响强度、时间窗口、关键传导路径），筛选出3-5只最具投资价值的核心标的。
+
+**筛选标准：**
+- 传导逻辑清晰且强度高
+- 公司基本面优质
+- 市场地位稳固或成长性突出
+- 估值相对合理
+- 事件催化剂明确
+
+**第二步：深度投资逻辑阐述**
+为每只核心标的构建详细的、可追溯的投资逻辑：
+- **完整传导链条**：清晰展示"新闻事件 → A股行业板块 → 产业链环节 → 具体公司业务 → 财务预期 → 投资决策"的完整逻辑。
+- **核心驱动因素**：明确指出推动投资价值的核心驱动力。
+- **量化指标支撑**：尽可能使用量化数据（如预期营收增长、利润弹性）支撑逻辑。
+- **情景分析**：简要分析在不同市场情景下的表现预期。
+
+**第三步：投资组合构建**
+- 基于核心标的，构建一个或多个示例投资组合。
+- 考虑组合的风险分散和收益目标。
+- 明确组合的投资主题和适用投资者类型。
+
+**第四步：风险全面揭示**
+- 针对每个核心标的和整体组合，进行全面的风险分析。
+- 包括市场风险、行业风险、公司特有风险、事件发展不及预期风险等。
+- 提供风险应对建议。
+
+**第五步：操作策略建议**
+- 给出具体的操作建议，如买入时机、仓位配置、止盈止损策略等。
+- 强调投资的时间周期和预期回报。
+""", # 任务描述
             agent=self.agents["investment_advisor"], # 指定执行此任务的Agent
-            context=[tasks["causal_reasoning"], tasks["industry_chain_building"]], # 此任务依赖前两个任务的输出
-            expected_output=( # 预期的输出格式和内容
-                "一个结构化的JSON字符串，必须包含以下字段：\n"
-                "  - `investment_theme_summary`: (string) 本次投资建议的核心主题和关键投资逻辑概述。\n"
-                "  - `strongly_related_portfolio`: (object) 强相关股票组合建议。\n"
-                "    - `count`: (integer) 强相关股票数量。\n"
-                "    - `stocks`: (list of objects) 每只强相关股票的详细信息，包含：\n"
-                "      - `code`: (string) 股票代码。\n"
-                "      - `name`: (string) 股票名称。\n"
-                "      - `relevance_score`: (float) 相关性评分。\n"
-                "      - `current_price`: (float, optional) 最新股价（如果能获取）。\n"
-                "      - `investment_logic`: (string) 详细的投资逻辑阐述。\n"
-                "      - `specific_advice`: (string) 具体操作建议（如：'建议重点关注并逢低布局'）。\n"
-                "      - `potential_catalysts`: (list of strings) 未来可能的催化剂。\n"
-                "      - `key_risks`: (list of strings) 主要风险点提示。\n"
-                "  - `moderately_related_watchlist`: (object) 中相关股票观察池。\n"
-                "    - `count`: (integer) 中相关股票数量。\n"
-                "    - `stocks`: (list of objects) 每只中相关股票信息，包含代码、名称、关注理由。\n"
-                "  - `weakly_related_reference`: (object, optional) 弱相关股票参考列表（可选，如果数量过多可省略）。\n"
-                "    - `count`: (integer) 弱相关股票数量。\n"
-                "    - `stocks`: (list of objects) 每只弱相关股票信息，包含代码、名称。\n"
-                "  - `overall_portfolio_risk_assessment`: (string) 对整个推荐组合的综合风险评估和管理建议。"
-            )
+            context=[tasks["causal_reasoning"], tasks["stock_pool_building"]], # 依赖因果推理和股票池构建结果
+            expected_output="""
+一个结构化的JSON字符串，必须包含以下字段：
+{{
+  "investment_strategy_summary": {{
+    "core_investment_theme": "本次投资策略的核心主题",
+    "strategy_overview": "投资策略概述（如事件驱动、价值发现等）",
+    "target_investor_profile": "目标投资者画像（风险偏好、投资周期）",
+    "expected_return_range": "预期回报区间（年化）",
+    "recommended_investment_horizon": "建议投资周期（如6-12个月）"
+  }},
+  "core_stock_recommendations": [
+    {{
+      "stock_code": "000XXX",
+      "stock_name": "股票名称",
+      "recommendation_rationale": {{
+        "full_transmission_logic": "详细的'新闻→行业→产业链→公司→决策'逻辑链",
+        "key_investment_drivers": ["核心驱动因素1", "核心驱动因素2"],
+        "quantitative_support": [
+          {{"metric_name": "营收增长预期", "value": "15-20%"}},
+          {{"metric_name": "利润弹性", "value": "高"}}
+        ],
+        "scenario_analysis_summary": "不同情景下的简要表现预期"
+      }},
+      "operational_advice": {{
+        "entry_point_suggestion": "建议买入时机或价格区间",
+        "position_sizing_recommendation": "建议仓位配置（如占总投资的X%）",
+        "stop_loss_suggestion": "止损建议",
+        "target_price_range": "目标价格区间"
+      }},
+      "risk_assessment": {{
+        "specific_risks": ["个股特有风险1", "个股特有风险2"],
+        "risk_mitigation_suggestions": ["风险应对建议1"]
+      }}
+    }}
+  ],
+  "sample_portfolio_construction": {{
+    "portfolio_name": "示例组合名称（如：新能源政策驱动组合）",
+    "portfolio_description": "组合构建逻辑和目标",
+    "asset_allocation": [
+      {{"stock_code": "000XXX", "weight": "40%"}},
+      {{"stock_code": "000YYY", "weight": "30%"}},
+      {{"stock_code": "000ZZZ", "weight": "30%"}}
+    ],
+    "portfolio_risk_level": "组合风险等级（高/中/低）",
+    "expected_portfolio_volatility": "组合预期波动率"
+  }},
+  "overall_strategy_risks": [
+    {{
+      "risk_category": "整体策略风险类别（如市场系统性风险）",
+      "risk_details": "风险详细描述",
+      "contingency_plan_summary": "应对预案摘要"
+    }}
+  ],
+  "disclaimer": "投资有风险，入市需谨慎。本建议仅供参考，不构成任何投资承诺。",
+  "visualization_data": {{
+      "final_decision_flowchart_data": {{
+          "steps": [
+              {{"id": "stock_pool", "label": "分层股票池", "type": "io"}},
+              {{"id": "screening", "label": "核心标的筛选", "type": "process"}},
+              {{"id": "final_reco", "label": "最终推荐", "type": "output"}}
+          ],
+          "connections": [
+              {{"from": "stock_pool", "to": "screening"}},
+              {{"from": "screening", "to": "final_reco"}}
+          ]
+      }}
+  }}
+}}
+"""
         )
         
         self.logger.info(f"成功创建 {len(tasks)} 个Agent任务") # 记录日志：成功创建任务的数量
@@ -452,86 +940,114 @@ class CrewManager(LoggerMixin): # 定义CrewManager类，继承LoggerMixin以使
 
     def _generate_agent_summary(self, agent_result: Any) -> Dict[str, Any]:
         """
-        为Agent团队的分析结果生成摘要。
-        Generate summary for Agent crew analysis result.
+        为Agent团队的分析结果生成增强型摘要。
+        Generate enhanced summary for Agent crew analysis result.
         
         Args:
             agent_result: Agent团队的最终输出 (通常是最后一个Task的输出字典)。
                           Final output from Agent crew.
             
         Returns:
-            Dict[str, Any]: 摘要信息。
-                          Summary information.
+            Dict[str, Any]: 增强型摘要信息。
+                          Enhanced summary information.
         """
-        # 初始化摘要，包含 main.py 中期望的字段的默认值
-        summary = {
+        # 初始化增强型摘要
+        enhanced_summary = {
+            "transmission_overview": {
+                "news_to_industry": "新闻事件对相关A股行业板块的影响分析正在生成...",
+                "industry_to_chain": "受影响行业板块内部的产业链传导分析正在生成...",
+                "chain_to_stocks": "产业链环节到相关股票池的映射分析正在生成...",
+                "final_logic": "最终投资逻辑和核心推荐总结正在生成..."
+            },
+            "layered_results": {
+                "affected_industries": [], # 将从早期任务中提取
+                "key_chain_segments": [],  # 将从产业链分析任务中提取
+                "stock_pool_summary": "股票池构建和分层统计正在生成...",
+                "final_recommendations": [] # 将从投资决策任务中提取
+            },
+            "confidence_analysis": {
+                "overall_confidence": 0.0, # 将综合计算
+                "key_assumptions": [], # 将从各阶段分析中提取
+                "risk_factors": [] # 将从各阶段分析中提取
+            },
+            # 保留main.py期望的旧版摘要字段，并尝试填充
             "message": "Agent团队分析完成",
-            "event_type": "未知",
-            "affected_industries": [],
-            "impact_direction": "未知",
-            "recommended_stocks_count": 0,
-            "top_recommendation": None, # 期望是一个包含 name 和 code 的字典
-            "investment_theme": "未明确投资主题" # 保留原有字段
+            "event_type": "未知", # 尝试从agent_result 或早期任务中获取
+            "impact_direction": "未知", # 尝试从agent_result 或早期任务中获取
+            "recommended_stocks_count": 0, # 将从final_recommendations计算
+            "top_recommendation": None, # 将从final_recommendations计算
+            "investment_theme": "未明确投资主题" # 将从agent_result获取
         }
-        
+
         try:
             if isinstance(agent_result, dict):
-                summary["investment_theme"] = agent_result.get("investment_theme_summary", "未明确投资主题")
+                # 填充投资主题
+                enhanced_summary["investment_theme"] = agent_result.get("investment_strategy_summary", {}).get("core_investment_theme", "未明确投资主题")
 
-                strong_portfolio = agent_result.get("strongly_related_portfolio", {})
-                strong_stocks = strong_portfolio.get("stocks", [])
-                
-                medium_portfolio = agent_result.get("moderately_related_watchlist", {})
-                # medium_stocks_count = medium_portfolio.get("count", 0) # 'count' 字段可能不存在或不准确
-                medium_stocks_list = medium_portfolio.get("stocks", [])
-                medium_stocks_count = len(medium_stocks_list)
-
-
-                summary["recommended_strong_stocks_count"] = len(strong_stocks) # 单独记录强相关数量
-                summary["recommended_medium_stocks_count"] = medium_stocks_count # 单独记录中相关数量
-                
-                total_recommended_count = len(strong_stocks) + medium_stocks_count
-                summary["recommended_stocks_count"] = total_recommended_count # 总推荐数量
-
-                if strong_stocks:
-                    top_stock_data = strong_stocks[0]
-                    summary["top_recommendation"] = {
-                        "name": top_stock_data.get("name", "未知股票"),
-                        "code": top_stock_data.get("code", "N/A"),
-                        # "advice": top_stock_data.get("specific_advice", "未提供具体建议") # main.py的摘要不直接用此字段
+                # 填充最终推荐和相关统计
+                core_recommendations = agent_result.get("core_stock_recommendations", [])
+                enhanced_summary["layered_results"]["final_recommendations"] = core_recommendations
+                enhanced_summary["recommended_stocks_count"] = len(core_recommendations)
+                if core_recommendations:
+                    top_stock = core_recommendations[0]
+                    enhanced_summary["top_recommendation"] = {
+                        "name": top_stock.get("stock_name", "未知股票"),
+                        "code": top_stock.get("stock_code", "N/A")
                     }
-                
-                # 注意: event_type, affected_industries, impact_direction 
-                # 通常在投资顾问Agent的最终输出中不直接包含。
-                # 这些信息更可能来自早期的分析阶段 (如消息分析Agent)。
-                # 要在最终摘要中包含它们，需要调整Crew的数据流，
-                # 例如，让投资顾问在其输出中包含这些上下文，
-                # 或者修改 run_analysis_crew 方法以聚合来自不同任务的输出。
-                # 当前修改仅基于 agent_result (投资顾问的输出) 进行提取。
+                    # 尝试填充旧版摘要的 event_type, affected_industries, impact_direction
+                    # 这些信息理想情况下应从更早的任务输出中获取并传递到最终结果
+                    # 这里我们尝试从最终推荐的逻辑中反向推断一些信息，但这并不完美
+                    if top_stock.get("recommendation_rationale", {}).get("full_transmission_logic"):
+                        logic_parts = top_stock["recommendation_rationale"]["full_transmission_logic"].split('→')
+                        if len(logic_parts) > 1: # 假设第一个是事件/新闻相关
+                             # 这是一个非常粗略的提取，实际应从前置任务获取
+                            enhanced_summary["event_type"] = "根据新闻分析" 
+                        if len(logic_parts) > 2: # 假设第二个是行业相关
+                            enhanced_summary["layered_results"]["affected_industries"] = [logic_parts[1].strip()]
 
-            elif isinstance(agent_result, list) and agent_result:
-                # 旧的兼容逻辑，如果最终结果直接是一个列表（不太可能了）
-                summary["recommended_stocks_count"] = len(agent_result)
-                if agent_result[0] and isinstance(agent_result[0], dict):
-                    summary["top_recommendation"] = {
-                        "name": agent_result[0].get("stock_name", agent_result[0].get("name", "未知股票")),
-                        "code": agent_result[0].get("stock_code", agent_result[0].get("code", "N/A")),
-                    }
+
+                # 填充股票池摘要 (这部分数据应来自股票池构建Agent的输出)
+                # 由于当前agent_result是投资决策Agent的输出，我们只能做一些推断
+                # 理想情况下，run_analysis_crew应该聚合所有任务的输出
+                stock_pool_construction = agent_result.get("stock_pool_construction", {}) # 假设投资决策Agent的输出包含了这个
+                if stock_pool_construction:
+                     enhanced_summary["layered_results"]["stock_pool_summary"] = (
+                        f"高相关: {stock_pool_construction.get('construction_summary',{}).get('high_relevance_count',0)}只, "
+                        f"中相关: {stock_pool_construction.get('construction_summary',{}).get('medium_relevance_count',0)}只, "
+                        f"低相关: {stock_pool_construction.get('construction_summary',{}).get('low_relevance_count',0)}只"
+                    )
+                
+                # 填充置信度、假设和风险 (这些也应从各阶段聚合)
+                overall_risks = agent_result.get("overall_strategy_risks", [])
+                if overall_risks:
+                    enhanced_summary["confidence_analysis"]["risk_factors"] = [
+                        f"{r.get('risk_category')}: {r.get('risk_details')}" for r in overall_risks
+                    ]
+                
+                # 简化的置信度计算 - 实际应更复杂
+                if core_recommendations:
+                    enhanced_summary["confidence_analysis"]["overall_confidence"] = 0.75 # 示例值
+                
+                # 传导总览的填充需要访问所有中间任务的结果，这里仅作占位
+                # enhanced_summary["transmission_overview"]["news_to_industry"] = "具体分析见各层级详情"
+                # ... 其他传导总览字段
+
             else:
-                summary["error_in_summary_generation"] = "最终结果格式不符合预期，无法提取标准摘要信息。"
-                
+                enhanced_summary["message"] = "Agent团队最终输出格式非预期字典类型"
+                self.logger.warning(f"Agent团队最终输出格式非预期: {type(agent_result)}")
+
         except Exception as e:
-            self.logger.error(f"生成Agent摘要时发生错误: {e}", exc_info=True)
-            summary["error_in_summary_generation"] = f"生成摘要时出错: {str(e)}"
+            self.logger.error(f"生成增强型Agent摘要时发生错误: {e}", exc_info=True)
+            enhanced_summary["message"] = f"生成摘要时出错: {str(e)}"
             # 确保即使出错，核心摘要字段也以默认值存在
-            summary.setdefault("event_type", "未知")
-            summary.setdefault("affected_industries", [])
-            summary.setdefault("impact_direction", "未知")
-            summary.setdefault("recommended_stocks_count", 0)
-            summary.setdefault("top_recommendation", None)
-            summary.setdefault("investment_theme", "处理摘要时出错")
+            enhanced_summary.setdefault("event_type", "未知")
+            enhanced_summary.setdefault("layered_results", {}).setdefault("affected_industries", [])
+            enhanced_summary.setdefault("impact_direction", "未知")
+            enhanced_summary.setdefault("recommended_stocks_count", 0)
+            enhanced_summary.setdefault("top_recommendation", None)
+            enhanced_summary.setdefault("investment_theme", "处理摘要时出错")
             
-        return summary
+        return enhanced_summary
 
 if __name__ == "__main__": # 如果此文件作为主程序运行
     # 测试Agent协作管理器 - Test Agent Collaboration Manager

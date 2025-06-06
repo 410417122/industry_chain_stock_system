@@ -55,7 +55,7 @@ class LLMClient:
         self.base_url = base_url or API_CONFIG.get("base_url")
         self.api_key = api_key or API_CONFIG.get("api_key")
         self.model = model or API_CONFIG.get("model", "deepseek-chat") # 更新默认模型
-        self.timeout = timeout or API_CONFIG.get("timeout", 30) # API_CONFIG中的timeout单位应为秒
+        self.timeout = timeout or API_CONFIG.get("timeout", 120) # API_CONFIG中的timeout单位应为秒
         self.max_retries = max_retries
         
         # 设置日志记录器 - Setup logger
