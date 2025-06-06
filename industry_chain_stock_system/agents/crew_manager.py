@@ -135,7 +135,7 @@ class CrewManager(LoggerMixin): # 定义CrewManager类，继承LoggerMixin以使
             config={ # LLM的特定于模型的配置
                 "base_url": API_CONFIG.get("base_url"), # API基础URL
                 "temperature": API_CONFIG.get("temperature", 0.5), # 温度参数
-                "timeout": API_CONFIG.get("timeout", 300) # 添加超时设置，从配置读取，默认300秒
+                "timeout": API_CONFIG.get("timeout", 120) # 更新默认回退值为120秒
             }
         )
 

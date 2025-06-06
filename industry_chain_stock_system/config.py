@@ -10,7 +10,7 @@ API_CONFIG = {
     "api_key": "sk-28e66466f44148b4b6135f6e92d18651",  # API密钥 - API key
     "model": "deepseek-chat",  # 默认模型 - Default model (恢复为不带路径的名称)
     "temperature": 0.5,  # 温度参数，控制输出的随机性 - Temperature for output randomness
-    "timeout": 300,  # 请求超时时间（秒）- Request timeout in seconds
+    "timeout": 120,  # 请求超时时间（秒）- Request timeout in seconds
 }
 
 # 数据库配置 - Database Configuration
